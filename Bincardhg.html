@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bincard / Kartu Stok Gudang (Hybrid Offline-Online)</title>
+    <!-- SheetJS untuk Export Excel (XLSX) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            color: #202124;
+            background-color: #f8f9fa;
+        }
+
+        /* ==========================================================
+           SPLASH SCREEN STYLING (TANPA LOGO ICON)
+           ========================================================== */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a73e8, #4285f4);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .splash-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            letter-spacing: 0.5px;
+            animation: fadeIn 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) both;
+        }
+        .splash-subtitle {
+            font-size: 0.95rem;
+            opacity: 0.85;
+            margin: 0;
+            animation: fadeIn 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) 0.2s both;
+        }
+        .splash-loader {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-top: 35px;
+            animation: fadeIn 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) 0.4s both, spin 1s linear infinite;
+        }
+
+        @keyframes fadeIn {
+            from { transform: translateY(12px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .sync-status {
+            font-size: 11px;
+            text-align: right;
+            margin-bottom: 8px;
+            color: #5f6368;
+            font-weight: 600;
+        }
+
+        #main-menu-view { display: block; }
+        #list-view { display: none; }
+        #bincard-view { display: none; }
+
+        .view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .view-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .icon-btn {
+            background-color: #f1f3f4;
+            color: #3c4043;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .icon-btn:hover { background-color: #e8eaed; }
+        .icon-btn.btn-add-icon {
+            background-color: #1a73e8;
+            color: white;
+            border-radius: 12px;
+        }
+        .icon-btn.btn-add-icon:hover { background-color: #1557b0; }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .category-card {
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .category-card:hover {
+            background-color: #f8f9fa;
+            border-color: #1a73e8;
+            box-shadow: 0 4px 8px rgba(26,115,232,0.15);
+            transform: translateY(-2px);
+        }
+        .category-card h3 { margin: 0 0 8px 0; color: #202124; font-size: 1.1rem; }
+        .category-card p { margin: 0; color: #5f6368; font-size: 13px; }
+
+        .material-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .material-card-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border: 1px solid #dadce0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            gap: 12px;
+            transition: border-color 0.2s;
+        }
+        .material-card-item:hover {
+            border-color: #bdc1c6;
+        }
+        .material-thumb {
+            width: 52px;
+            height: 52px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e0e0e0;
+            background: #f1f3f4;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .material-info {
+            flex: 1;
+            cursor: pointer;
+        }
+        .material-info:hover .material-card-title {
+            color: #1a73e8;
+        }
+        .material-card-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: #202124;
+            margin-bottom: 4px;
+        }
+        .material-card-sub {
+            font-size: 12px;
+            color: #5f6368;
+        }
+        
+        .material-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .btn-item-edit {
+            background-color: #e8f0fe;
+            color: #1a73e8;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-item-edit:hover { background-color: #d2e3fc; }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .dropbtn {
+            background-color: #f1f3f4;
+            color: #3c4043;
+            padding: 8px 12px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .dropbtn:hover { background-color: #e8eaed; }
+        .btn-back {
+            background-color: #f1f3f4;
+            color: #3c4043;
+            padding: 8px 14px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Android Modern Bottom Sheet / Modal Styling */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(32, 33, 36, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: flex-end;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            width: 100%;
+            max-width: 500px;
+            max-height: 85vh;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.1, 0.9, 0.2, 1);
+            overflow: hidden;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-handlebar-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 12px 0 4px 0;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        .modal-handlebar {
+            width: 36px;
+            height: 4px;
+            background-color: #dadce0;
+            border-radius: 2px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 24px 16px 24px;
+            background-color: #fff;
+        }
+        .modal-header h3 { 
+            margin: 0; 
+            font-size: 1.25rem; 
+            color: #202124;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: #f1f3f4;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            color: #5f6368;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .modal-close:hover { background-color: #e8eaed; }
+
+        .modal-body {
+            padding: 0 24px 24px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .modal-body button.menu-btn {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            border: 1px solid #e0e0e0;
+            background-color: #fff;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .modal-body button.menu-btn:hover {
+            background-color: #f8f9fa;
+            border-color: #bdc1c6;
+        }
+        .btn-modal-edit { color: #1a73e8; }
+        .btn-modal-delete { color: #d93025; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #5f6368;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+            background-color: #f8f9fa;
+            color: #202124;
+            transition: all 0.2s;
+            text-align: left !important;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.15);
+        }
+
+        .camera-container {
+            text-align: center;
+            margin-top: 5px;
+            background: #f8f9fa;
+            border: 1px dashed #dadce0;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        .camera-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+            margin-bottom: 12px;
+            display: none;
+        }
+        .btn-camera {
+            background-color: #e8f0fe;
+            color: #1a73e8;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        .btn-camera:hover { background-color: #d2e3fc; }
+
+        .btn-submit-modal {
+            background-color: #1a73e8;
+            color: white;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .btn-submit-modal:hover {
+            background-color: #1557b0;
+            box-shadow: 0 4px 8px rgba(26,115,232,0.25);
+        }
+
+        h2 { text-align: center; margin: 0; font-size: 1.2rem; text-transform: uppercase; }
+        
+        .header-info-container {
+            display: flex;
+            gap: 12px;
+            background: #fff;
+            padding: 12px;
+            border: 1px solid #dadce0;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        .header-img-preview {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            background: #f1f3f4;
+        }
+        .header-info {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 4px;
+            font-size: 13px;
+        }
+        .header-info div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 0;
+            border-bottom: 1px dashed #f1f3f4;
+        }
+        .header-info span { font-weight: 600; color: #202124; }
+        
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            min-width: 550px;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td { border: 1px solid #dadce0; padding: 4px 6px; text-align: center; vertical-align: middle; }
+        th { background-color: #f1f3f4; color: #3c4043; font-weight: 600; }
+        
+        table input[type="text"], 
+        table input[type="date"], 
+        table input[type="number"] {
+            width: 100%;
+            padding: 6px 4px;
+            border: none !important;
+            outline: none !important;
+            background: transparent !important;
+            text-align: center;
+            font-size: 12px;
+            box-sizing: border-box;
+            box-shadow: none !important;
+        }
+        table input.text-left { text-align: left; }
+        
+        table input[type="text"]:focus, 
+        table input[type="date"]:focus, 
+        table input[type="number"]:focus {
+            background-color: #e8f0fe !important;
+            border-radius: 4px;
+        }
+
+        .btn-container { display: flex; gap: 10px; }
+        button.action-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .btn-add { background-color: #1a73e8; color: white; }
+        .btn-excel { background-color: #137333; color: white; }
+        .btn-delete-row {
+            background-color: #fce8e6;
+            color: #d93025;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-delete-row:hover { background-color: #fad2cf; }
+
+        @media (min-width: 768px) {
+            body { margin: 20px; }
+            .container { padding: 24px; }
+            .category-grid { grid-template-columns: 1fr 1fr; }
+            .header-info { grid-template-columns: 1fr 1fr; gap: 15px; }
+            h2 { font-size: 1.5rem; }
+            .modal-overlay { align-items: center; }
+            .modal-content { max-width: 440px; border-radius: 20px; transform: scale(0.9); transition: transform 0.25s ease, opacity 0.25s ease; opacity: 0; }
+            .modal-overlay.show .modal-content { transform: scale(1); opacity: 1; }
+            .modal-handlebar-container { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SPLASH SCREEN VIEW (TANPA LOGO ICON) -->
+    <div id="splash-screen">
+        <h1 class="splash-title">Bincard Gudang</h1>
+        <p class="splash-subtitle">Hybrid Offline-Online Inventory System</p>
+        <div class="splash-loader"></div>
+    </div>
+
+<div class="container">
+
+    <div id="syncStatus" class="sync-status">Status: Memuat data...</div>
+
+    <!-- Modal Form Tambah Material Umum -->
+    <div id="formModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-handlebar-container" onclick="tutupFormBaru()"><div class="modal-handlebar"></div></div>
+            <div class="modal-header">
+                <h3>Tambah Material Umum</h3>
+                <button class="modal-close" onclick="tutupFormBaru()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nama Material:</label>
+                    <input type="text" id="inputNewName" placeholder="Contoh: Oli Mesin 10W-40">
+                </div>
+                <div class="form-group">
+                    <label>Lokasi Gudang:</label>
+                    <input type="text" id="inputNewLoc" placeholder="Contoh: Rak B-02">
+                </div>
+                <div class="form-group">
+                    <label>Satuan:</label>
+                    <input type="text" id="inputNewUnit" placeholder="Contoh: Liter / Pcs">
+                </div>
+                <div class="form-group">
+                    <label>Foto Material:</label>
+                    <div class="camera-container">
+                        <img id="previewNewImg" class="camera-preview" src="" alt="Preview">
+                        <br>
+                        <input type="file" id="inputNewCamera" accept="image/*" capture="environment" style="display:none" onchange="handleCameraCapture(event, 'previewNewImg', 'new')">
+                        <button type="button" class="btn-camera" onclick="document.getElementById('inputNewCamera').click()">📷 Ambil Foto Kamera</button>
+                    </div>
+                </div>
+                <button class="btn-submit-modal" onclick="simpanMaterialBaru()">Simpan Material</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Tambah Jumbo Roll -->
+    <div id="formJumboModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-handlebar-container" onclick="tutupFormJumbo()"><div class="modal-handlebar"></div></div>
+            <div class="modal-header">
+                <h3>Tambah Jumbo Roll</h3>
+                <button class="modal-close" onclick="tutupFormJumbo()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nama / Kode Roll:</label>
+                    <input type="text" id="inputJumboName" placeholder="Contoh: JR-Kraft">
+                </div>
+                <div class="form-group">
+                    <label>Ukuran / Gramatur:</label>
+                    <input type="text" id="inputJumboSize" placeholder="Contoh: Lebar 120 cm / 80 GSM">
+                </div>
+                <div class="form-group">
+                    <label>Lokasi Zona:</label>
+                    <input type="text" id="inputJumboLoc" placeholder="Contoh: Zona Roll A-3">
+                </div>
+                <div class="form-group">
+                    <label>Satuan:</label>
+                    <input type="text" id="inputJumboUnit" value="Kg">
+                </div>
+                <div class="form-group">
+                    <label>Foto Roll:</label>
+                    <div class="camera-container">
+                        <img id="previewJumboImg" class="camera-preview" src="" alt="Preview">
+                        <br>
+                        <input type="file" id="inputJumboCamera" accept="image/*" capture="environment" style="display:none" onchange="handleCameraCapture(event, 'previewJumboImg', 'jumbo')">
+                        <button type="button" class="btn-camera" onclick="document.getElementById('inputJumboCamera').click()">📷 Ambil Foto Kamera</button>
+                    </div>
+                </div>
+                <button class="btn-submit-modal" onclick="simpanJumboRollBaru()">Simpan Jumbo Roll</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Edit Material Universal -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-handlebar-container" onclick="tutupFormEdit()"><div class="modal-handlebar"></div></div>
+            <div class="modal-header">
+                <h3>Edit Material & Foto</h3>
+                <button class="modal-close" onclick="tutupFormEdit()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nama / Keterangan:</label>
+                    <input type="text" id="inputEditName">
+                </div>
+                <div class="form-group">
+                    <label>Lokasi / Zona:</label>
+                    <input type="text" id="inputEditLoc">
+                </div>
+                <div class="form-group">
+                    <label>Satuan:</label>
+                    <input type="text" id="inputEditUnit">
+                </div>
+                <div class="form-group">
+                    <label>Foto Material:</label>
+                    <div class="camera-container">
+                        <img id="previewEditImg" class="camera-preview" src="" alt="Preview">
+                        <br>
+                        <input type="file" id="inputEditCamera" accept="image/*" capture="environment" style="display:none" onchange="handleCameraCapture(event, 'previewEditImg', 'edit')">
+                        <button type="button" class="btn-camera" onclick="document.getElementById('inputEditCamera').click()">📷 Ambil Foto Baru</button>
+                    </div>
+                </div>
+                <button class="btn-submit-modal" onclick="simpanEditMaterial()">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. TAMPILAN UTAMA: MENU KATEGORI -->
+    <div id="main-menu-view">
+        <div class="view-header" style="justify-content: center;">
+            <h2>Pilih Kategori Gudang</h2>
+        </div>
+        <div class="category-grid">
+            <div class="category-card" onclick="bukaKategori('umum')">
+                <h3>📦 Gudang Umum</h3>
+                <p>Kelola bincard dan stok material perlengkapan, sparepart, dll.</p>
+            </div>
+            <div class="category-card" onclick="bukaKategori('jumbo')">
+                <h3>📜 Jumbo Roll Material</h3>
+                <p>Kelola bincard dan stok gulungan besar (kertas/plastik/dll).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TAMPILAN DAFTAR MATERIAL PER KATEGORI (LIST VIEW) -->
+    <div id="list-view">
+        <div class="view-header">
+            <button class="icon-btn" onclick="kembaliKeMenuUtama()" title="Kembali">⬅️</button>
+            <h2 id="list-title">Daftar Material</h2>
+            <button class="icon-btn btn-add-icon" onclick="bukaFormTambahAktif()" title="Tambah">+</button>
+        </div>
+        <div id="material-card-list" class="material-card-list">
+            <!-- List kartu material dimuat secara dinamis -->
+        </div>
+    </div>
+
+    <!-- 3. TAMPILAN KARTU STOK / BINCARD (BINCARD VIEW) -->
+    <div id="bincard-view">
+        <div class="top-bar">
+            <button class="btn-back" onclick="kembaliKeList()">⬅️</button>
+            <h2>Kartu Stok</h2>
+            <button onclick="toggleMenu()" class="dropbtn">&#8284;</button>
+        </div>
+
+        <!-- Modal Popup Menu Bincard -->
+        <div id="menuModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-handlebar-container" onclick="toggleMenu()"><div class="modal-handlebar"></div></div>
+                <div class="modal-header">
+                    <h3>Menu Opsi</h3>
+                    <button class="modal-close" onclick="toggleMenu()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <button class="menu-btn btn-modal-edit" onclick="bukaFormEditDariBincard()">✏️ Edit Info & Foto Material</button>
+                    <button class="menu-btn btn-modal-delete" onclick="hapusBincardAktif()">🗑️ Hapus Material Ini</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Header Info dengan Foto -->
+        <div class="header-info-container">
+            <img id="lbl-img" class="header-img-preview" src="" alt="Foto" style="display:none;">
+            <div class="header-info">
+                <div>Nama Material: <span id="lbl-name">-</span></div>
+                <div>Lokasi Gudang: <span id="lbl-loc">-</span></div>
+                <div>Satuan: <span id="lbl-unit">-</span></div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="bincard-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Tanggal</th>
+                        <th rowspan="2">Keterangan / Supplier</th>
+                        <th colspan="3">Jumlah (Qty)</th>
+                        <th rowspan="2">Penggunaan / Brand Tertentu</th>
+                        <th rowspan="2" class="no-print">Aksi</th>
+                    </tr>
+                    <tr>
+                        <th>Masuk</th>
+                        <th>Keluar</th>
+                        <th>Sisa</th>
+                    </tr>
+                </thead>
+                <tbody id="bincard-body">
+                    <!-- Baris transaksi dimuat secara dinamis -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="btn-container">
+            <button class="action-btn btn-add" onclick="tambahBaris()">+ Tambah Baris</button>
+            <button class="action-btn btn-excel" onclick="downloadExcel()">📥 Download Excel (.xlsx)</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "ISI_API_KEY_ANDA",
+        authDomain: "ISI_AUTH_DOMAIN_ANDA",
+        projectId: "ISI_PROJECT_ID_ANDA",
+        storageBucket: "ISI_STORAGE_BUCKET_ANDA",
+        messagingSenderId: "ISI_MESSAGING_SENDER_ID_ANDA",
+        appId: "ISI_APP_ID_ANDA"
+    };
+
+    let isFirebaseReady = false;
+    let db = null;
+
+    try {
+        if (firebaseConfig.projectId !== "ISI_PROJECT_ID_ANDA") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            isFirebaseReady = true;
+        }
+    } catch (e) {
+        console.log("Firebase belum dikonfigurasi, berjalan dalam mode Offline (LocalStorage saja).");
+    }
+
+    let bincards = JSON.parse(localStorage.getItem('bincards_data_hybrid')) || [
+        {
+            id: 1,
+            category: "umum",
+            name: "Baut M10 x 30",
+            loc: "Rak A-01",
+            unit: "Pcs",
+            img: "",
+            rows: [
+                { date: new Date().toISOString().split('T')[0], desc: "Stok Opname", in: "", out: "", brand: "-" }
+            ]
+        }
+    ];
+
+    let activeCategory = null; 
+    let activeId = null;
+    let tempCapturedImage = "";
+
+    window.onload = async function() {
+        // Simulasi waktu tampil splash screen 1.5 detik
+        setTimeout(() => {
+            let splash = document.getElementById("splash-screen");
+            splash.style.opacity = "0";
+            splash.style.visibility = "hidden";
+        }, 1500);
+
+        if (isFirebaseReady && db) {
+            document.getElementById("syncStatus").innerText = "Status: Menghubungkan ke Cloud...";
+            try {
+                let docRef = db.collection("gudang_data").doc("database_utama");
+                let doc = await docRef.get();
+                if (doc.exists) {
+                    bincards = doc.data().items || bincards;
+                    localStorage.setItem('bincards_data_hybrid', JSON.stringify(bincards));
+                    document.getElementById("syncStatus").innerText = "Status: Online (Sinkron dengan Cloud)";
+                } else {
+                    await docRef.set({ items: bincards });
+                    document.getElementById("syncStatus").innerText = "Status: Online (Data awal terunggah)";
+                }
+            } catch (err) {
+                document.getElementById("syncStatus").innerText = "Status: Offline (Menggunakan memori lokal)";
+            }
+        } else {
+            document.getElementById("syncStatus").innerText = "Status: Offline (Mode Lokal)";
+        }
+    };
+
+    function simpanStorage() {
+        localStorage.setItem('bincards_data_hybrid', JSON.stringify(bincards));
+        if (isFirebaseReady && db) {
+            document.getElementById("syncStatus").innerText = "Status: Menyinkronkan...";
+            db.collection("gudang_data").doc("database_utama").set({
+                items: bincards
+            }).then(() => {
+                document.getElementById("syncStatus").innerText = "Status: Online (Tersinkronisasi)";
+            }).catch(() => {
+                document.getElementById("syncStatus").innerText = "Status: Offline (Perubahan tersimpan lokal)";
+            });
+        }
+    }
+
+    function handleCameraCapture(event, previewImgId, type) {
+        let file = event.target.files[0];
+        if (file) {
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let img = new Image();
+                img.onload = function() {
+                    let canvas = document.createElement('canvas');
+                    let ctx = canvas.getContext('2d');
+                    let maxWidth = 400;
+                    let maxHeight = 400;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width *= maxHeight / height;
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    let compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    tempCapturedImage = compressedBase64;
+                    
+                    let previewEl = document.getElementById(previewImgId);
+                    previewEl.src = compressedBase64;
+                    previewEl.style.display = "inline-block";
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function kembaliKeMenuUtama() {
+        document.getElementById("list-view").style.display = "none";
+        document.getElementById("bincard-view").style.display = "none";
+        document.getElementById("main-menu-view").style.display = "block";
+    }
+
+    function bukaKategori(category) {
+        activeCategory = category;
+        document.getElementById("main-menu-view").style.display = "none";
+        document.getElementById("list-view").style.display = "block";
+        
+        if (category === 'umum') {
+            document.getElementById("list-title").innerText = "Gudang Umum";
+        } else {
+            document.getElementById("list-title").innerText = "Jumbo Roll Material";
+        }
+        renderMaterialList();
+    }
+
+    function kembaliKeList() {
+        document.getElementById("bincard-view").style.display = "none";
+        document.getElementById("list-view").style.display = "block";
+        renderMaterialList();
+    }
+
+    function renderMaterialList() {
+        let listContainer = document.getElementById("material-card-list");
+        listContainer.innerHTML = "";
+
+        let filteredItems = bincards.filter(item => item.category === activeCategory);
+
+        if (filteredItems.length === 0) {
+            listContainer.innerHTML = `<div style="text-align:center; color:#888; padding:20px;">Belum ada data material dalam kategori ini. Silakan tambah baru.</div>`;
+            return;
+        }
+
+        filteredItems.forEach(item => {
+            let card = document.createElement("div");
+            card.className = "material-card-item";
+            
+            let thumbHtml = item.img 
+                ? `<img src="${item.img}" class="material-thumb" onclick="bukaBincard(${item.id})" alt="Foto">` 
+                : `<div class="material-thumb" style="display:flex; align-items:center; justify-content:center; font-size:10px; color:#aaa;" onclick="bukaBincard(${item.id})">No Foto</div>`;
+
+            card.innerHTML = `
+                ${thumbHtml}
+                <div class="material-info" onclick="bukaBincard(${item.id})">
+                    <div class="material-card-title">${item.name}</div>
+                    <div class="material-card-sub">Lokasi: ${item.loc} | Satuan: ${item.unit}</div>
+                </div>
+                <div class="material-actions">
+                    <button class="btn-item-edit" onclick="bukaFormEditDariList(${item.id})" title="Edit Barang">✏️ Edit</button>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+    }
+
+    function bukaFormTambahAktif() {
+        tempCapturedImage = "";
+        if (activeCategory === 'umum') {
+            document.getElementById("inputNewName").value = "";
+            document.getElementById("inputNewLoc").value = "";
+            document.getElementById("inputNewUnit").value = "Pcs";
+            document.getElementById("previewNewImg").style.display = "none";
+            document.getElementById("formModal").classList.add("show");
+        } else {
+            document.getElementById("inputJumboName").value = "";
+            document.getElementById("inputJumboSize").value = "";
+            document.getElementById("inputJumboLoc").value = "";
+            document.getElementById("inputJumboUnit").value = "Kg";
+            document.getElementById("previewJumboImg").style.display = "none";
+            document.getElementById("formJumboModal").classList.add("show");
+        }
+    }
+
+    function tutupFormBaru() { document.getElementById("formModal").classList.remove("show"); }
+    function tutupFormJumbo() { document.getElementById("formJumboModal").classList.remove("show"); }
+
+    function simpanMaterialBaru() {
+        let namaBaru = document.getElementById("inputNewName").value.trim();
+        let locBaru = document.getElementById("inputNewLoc").value.trim() || "Rak -";
+        let unitBaru = document.getElementById("inputNewUnit").value.trim() || "Pcs";
+
+        if (!namaBaru) { alert("Nama material tidak boleh kosong!"); return; }
+
+        bincards.push({
+            id: Date.now(),
+            category: "umum",
+            name: namaBaru,
+            loc: locBaru,
+            unit: unitBaru,
+            img: tempCapturedImage,
+            rows: [{ date: new Date().toISOString().split('T')[0], desc: "Stok Awal", in: "", out: "", brand: "-" }]
+        });
+
+        simpanStorage();
+        tutupFormBaru();
+        renderMaterialList();
+    }
+
+    function simpanJumboRollBaru() {
+        let nameInput = document.getElementById("inputJumboName").value.trim();
+        let sizeInput = document.getElementById("inputJumboSize").value.trim();
+        let locInput = document.getElementById("inputJumboLoc").value.trim() || "Zona Roll -";
+        let unitInput = document.getElementById("inputJumboUnit").value.trim() || "Kg";
+
+        if (!nameInput) { alert("Nama/Kode Jumbo Roll tidak boleh kosong!"); return; }
+
+        let finalName = sizeInput ? `${nameInput} (${sizeInput})` : nameInput;
+
+        bincards.push({
+            id: Date.now(),
+            category: "jumbo",
+            name: finalName,
+            loc: locInput,
+            unit: unitInput,
+            img: tempCapturedImage,
+            rows: [{ date: new Date().toISOString().split('T')[0], desc: "Stok Awal Jumbo Roll", in: "", out: "", brand: "-" }]
+        });
+
+        simpanStorage();
+        tutupFormJumbo();
+        renderMaterialList();
+    }
+
+    function bukaBincard(id) {
+        activeId = id;
+        document.getElementById("list-view").style.display = "none";
+        document.getElementById("bincard-view").style.display = "block";
+        muatDataAktif();
+    }
+
+    function toggleMenu() {
+        let modal = document.getElementById("menuModal");
+        modal.classList.toggle("show");
+    }
+
+    function bukaFormEditDariList(id) {
+        activeId = id;
+        bukaFormEditShared();
+    }
+
+    function bukaFormEditDariBincard() {
+        toggleMenu();
+        bukaFormEditShared();
+    }
+
+    function bukaFormEditShared() {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        document.getElementById("inputEditName").value = current.name;
+        document.getElementById("inputEditLoc").value = current.loc;
+        document.getElementById("inputEditUnit").value = current.unit;
+        
+        tempCapturedImage = current.img || "";
+        let previewEl = document.getElementById("previewEditImg");
+        if (tempCapturedImage) {
+            previewEl.src = tempCapturedImage;
+            previewEl.style.display = "inline-block";
+        } else {
+            previewEl.style.display = "none";
+        }
+
+        document.getElementById("editModal").classList.add("show");
+    }
+
+    function tutupFormEdit() {
+        document.getElementById("editModal").classList.remove("show");
+    }
+
+    function simpanEditMaterial() {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        let namaEdit = document.getElementById("inputEditName").value.trim();
+        let locEdit = document.getElementById("inputEditLoc").value.trim() || "Rak -";
+        let unitEdit = document.getElementById("inputEditUnit").value.trim() || "Pcs";
+
+        if (!namaEdit) { alert("Nama material tidak boleh kosong!"); return; }
+
+        current.name = namaEdit;
+        current.loc = locEdit;
+        current.unit = unitEdit;
+        current.img = tempCapturedImage;
+
+        simpanStorage();
+        tutupFormEdit();
+
+        if (document.getElementById("bincard-view").style.display !== "none") {
+            muatDataAktif();
+        } else {
+            renderMaterialList();
+        }
+    }
+
+    function hapusBincardAktif() {
+        toggleMenu();
+        if (confirm("Yakin ingin menghapus material ini?")) {
+            bincards = bincards.filter(item => item.id !== activeId);
+            simpanStorage();
+            kembaliKeList();
+        }
+    }
+
+    function muatDataAktif() {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        document.getElementById("lbl-name").innerText = current.name;
+        document.getElementById("lbl-loc").innerText = current.loc;
+        document.getElementById("lbl-unit").innerText = current.unit;
+
+        let imgEl = document.getElementById("lbl-img");
+        if (current.img) {
+            imgEl.src = current.img;
+            imgEl.style.display = "block";
+        } else {
+            imgEl.style.display = "none";
+        }
+
+        let tbody = document.getElementById("bincard-body");
+        tbody.innerHTML = "";
+
+        let balance = 0;
+        current.rows.forEach((r, index) => {
+            let inVal = parseFloat(r.in) || 0;
+            let outVal = parseFloat(r.out) || 0;
+            if (index === 0) {
+                balance = inVal - outVal;
+            } else {
+                balance = balance + inVal - outVal;
+            }
+
+            let displayIn = (r.in !== "" && !isNaN(r.in)) ? r.in : "";
+            let displayOut = (r.out !== "" && !isNaN(r.out)) ? r.out : "";
+            let displayBalance = (balance !== 0 || index > 0 || r.in !== "" || r.out !== "") ? balance : "";
+
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><input type="date" value="${r.date}" onchange="updateRowValue(${index}, 'date', this.value)"></td>
+                <td><input type="text" class="text-left" value="${r.desc}" oninput="updateRowValueOnly(${index}, 'desc', this.value)"></td>
+                <td><input type="number" class="qty-in" value="${displayIn}" oninput="updateRowValueAndCalculate(${index}, 'in', this.value)"></td>
+                <td><input type="number" class="qty-out" value="${displayOut}" oninput="updateRowValueAndCalculate(${index}, 'out', this.value)"></td>
+                <td><input type="number" class="qty-balance" value="${displayBalance}" readonly style="background-color: #f1f3f4;"></td>
+                <td><input type="text" class="text-left" value="${r.brand || ''}" oninput="updateRowValueOnly(${index}, 'brand', this.value)"></td>
+                <td class="no-print"><button class="btn-delete-row" onclick="hapusBaris(${index})">Hapus</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateRowValueOnly(index, field, value) {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+        current.rows[index][field] = value;
+        simpanStorage();
+    }
+
+    function updateRowValue(index, field, value) {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+        current.rows[index][field] = value;
+        simpanStorage();
+    }
+
+    function updateRowValueAndCalculate(index, field, value) {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+        current.rows[index][field] = value;
+        simpanStorage();
+        hitungUlangBalanceOnly();
+    }
+
+    function hitungUlangBalanceOnly() {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        let rows = document.querySelectorAll("#bincard-body tr");
+        let balance = 0;
+
+        rows.forEach((row, index) => {
+            let inVal = parseFloat(current.rows[index].in) || 0;
+            let outVal = parseFloat(current.rows[index].out) || 0;
+
+            if (index === 0) {
+                balance = inVal - outVal;
+            } else {
+                balance = balance + inVal - outVal;
+            }
+
+            let displayBalance = (balance !== 0 || index > 0 || current.rows[index].in !== "" || current.rows[index].out !== "") ? balance : "";
+            row.querySelector(".qty-balance").value = displayBalance;
+        });
+    }
+
+    function tambahBaris() {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        let today = new Date().toISOString().split('T')[0];
+        current.rows.push({ date: today, desc: "", in: "", out: "", brand: "" });
+
+        simpanStorage();
+        muatDataAktif();
+    }
+
+    function hapusBaris(index) {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        current.rows.splice(index, 1);
+        simpanStorage();
+        muatDataAktif();
+    }
+
+    function downloadExcel() {
+        let current = bincards.find(item => item.id === activeId);
+        if (!current) return;
+
+        let dataFormatted = [
+            ["KARTU STOK / BINCARD MATERIAL"],
+            ["Nama Material", current.name],
+            ["Lokasi Gudang", current.loc],
+            ["Satuan", current.unit],
+            [],
+            ["Tanggal", "Keterangan / Supplier", "Masuk (In)", "Keluar (Out)", "Sisa (Balance)", "Penggunaan / Brand Tertentu"]
+        ];
+
+        let balance = 0;
+        current.rows.forEach((r, index) => {
+            let inVal = parseFloat(r.in) || 0;
+            let outVal = parseFloat(r.out) || 0;
+            if (index === 0) {
+                balance = inVal - outVal;
+            } else {
+                balance = balance + inVal - outVal;
+            }
+
+            let excelIn = (r.in !== "" && !isNaN(r.in)) ? inVal : "";
+            let excelOut = (r.out !== "" && !isNaN(r.out)) ? outVal : "";
+            let excelBalance = (balance !== 0 || index > 0 || r.in !== "" || r.out !== "") ? balance : "";
+
+            dataFormatted.push([
+                r.date,
+                r.desc,
+                excelIn,
+                excelOut,
+                excelBalance,
+                r.brand || ""
+            ]);
+        });
+
+        let ws = XLSX.utils.aoa_to_sheet(dataFormatted);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Bincard");
+
+        let fileName = `Bincard_${current.name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    }
+</script>
+
+</body>
+</html>
