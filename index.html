@@ -19,7 +19,7 @@
         }
 
         /* ==========================================================
-           SPLASH SCREEN STYLING (TANPA LOGO ICON)
+           SPLASH SCREEN STYLING
            ========================================================== */
         #splash-screen {
             position: fixed;
@@ -55,9 +55,8 @@
             border: 3px solid rgba(255,255,255,0.3);
             border-top: 3px solid white;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-top: 35px;
             animation: fadeIn 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) 0.4s both, spin 1s linear infinite;
+            margin-top: 35px;
         }
 
         @keyframes fadeIn {
@@ -91,13 +90,25 @@
         #list-view { display: none; }
         #bincard-view { display: none; }
 
+        /* ==========================================================
+           STICKY TOP BAR / HEADER
+           ========================================================== */
+        .view-header, .top-bar {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 99;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
         .view-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 10px;
         }
         .view-header h2 {
             margin: 0;
@@ -224,9 +235,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 10px;
         }
         .dropbtn {
             background-color: #f1f3f4;
@@ -250,7 +258,9 @@
             font-weight: 600;
         }
 
-        /* Android Modern Bottom Sheet / Modal Styling */
+        /* ==========================================================
+           ANDROID MODERN BOTTOM SHEET & POP-UP STYLING
+           ========================================================== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -259,12 +269,12 @@
             width: 100%;
             height: 100%;
             background-color: rgba(32, 33, 36, 0.6);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(5px);
             z-index: 1000;
             justify-content: center;
-            align-items: flex-end;
+            align-items: flex-end; /* Mobile Bottom Sheet */
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .modal-overlay.show {
             display: flex;
@@ -273,11 +283,11 @@
         .modal-content {
             background-color: #fff;
             width: 100%;
-            max-width: 500px;
-            max-height: 85vh;
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
+            max-width: 480px;
+            max-height: 90vh;
+            border-top-left-radius: 28px;
+            border-top-right-radius: 28px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
             display: flex;
             flex-direction: column;
             transform: translateY(100%);
@@ -292,14 +302,14 @@
             width: 100%;
             display: flex;
             justify-content: center;
-            padding: 12px 0 4px 0;
+            padding: 12px 0 2px 0;
             background-color: #fff;
             cursor: pointer;
         }
         .modal-handlebar {
-            width: 36px;
+            width: 38px;
             height: 4px;
-            background-color: #dadce0;
+            background-color: #bfc1c5;
             border-radius: 2px;
         }
 
@@ -309,18 +319,19 @@
             align-items: center;
             padding: 8px 24px 16px 24px;
             background-color: #fff;
+            border-bottom: 1px solid #f1f3f4;
         }
         .modal-header h3 { 
             margin: 0; 
-            font-size: 1.25rem; 
+            font-size: 1.2rem; 
             color: #202124;
             font-weight: 600;
         }
         .modal-close {
             background: #f1f3f4;
             border: none;
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             font-size: 16px;
             cursor: pointer;
@@ -333,49 +344,49 @@
         .modal-close:hover { background-color: #e8eaed; }
 
         .modal-body {
-            padding: 0 24px 24px 24px;
+            padding: 20px 24px;
             overflow-y: auto;
             flex: 1;
         }
         
         .modal-body button.menu-btn {
             width: 100%;
-            padding: 14px 16px;
-            margin-bottom: 8px;
-            border: 1px solid #e0e0e0;
-            background-color: #fff;
-            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            border: 1px solid #e8eaed;
+            background-color: #f8f9fa;
+            border-radius: 16px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             text-align: left;
             display: flex;
             align-items: center;
-            gap: 12px;
-            transition: background 0.2s, border-color 0.2s;
+            gap: 14px;
+            transition: all 0.2s;
         }
         .modal-body button.menu-btn:hover {
-            background-color: #f8f9fa;
-            border-color: #bdc1c6;
+            background-color: #f1f3f4;
+            border-color: #dadce0;
         }
         .btn-modal-edit { color: #1a73e8; }
         .btn-modal-delete { color: #d93025; }
 
-        .form-group { margin-bottom: 16px; }
+        .form-group { margin-bottom: 18px; }
         .form-group label {
             display: block;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 11px;
+            font-weight: 700;
             margin-bottom: 6px;
             color: #5f6368;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
         }
         .form-group input {
             width: 100%;
-            padding: 12px 14px;
+            padding: 13px 16px;
             border: 1px solid #dadce0;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 15px;
             box-sizing: border-box;
             background-color: #f8f9fa;
@@ -394,25 +405,26 @@
             text-align: center;
             margin-top: 5px;
             background: #f8f9fa;
-            border: 1px dashed #dadce0;
+            border: 1.5px dashed #dadce0;
             padding: 16px;
-            border-radius: 12px;
+            border-radius: 16px;
         }
         .camera-preview {
-            width: 100px;
-            height: 100px;
+            width: 90px;
+            height: 90px;
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: 12px;
             border: 1px solid #dadce0;
             margin-bottom: 12px;
             display: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
         .btn-camera {
             background-color: #e8f0fe;
             color: #1a73e8;
-            padding: 10px 16px;
+            padding: 10px 18px;
             border: none;
-            border-radius: 8px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
@@ -429,18 +441,85 @@
             width: 100%;
             padding: 14px;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 10px;
+            box-shadow: 0 2px 6px rgba(26,115,232,0.3);
             transition: background 0.2s, box-shadow 0.2s;
         }
         .btn-submit-modal:hover {
             background-color: #1557b0;
-            box-shadow: 0 4px 8px rgba(26,115,232,0.25);
+            box-shadow: 0 4px 10px rgba(26,115,232,0.4);
         }
+
+        /* ==========================================================
+           ANDROID MODERN ALERT / TOAST POP-UP
+           ========================================================== */
+        .android-alert-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(32, 33, 36, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .android-alert-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .android-alert-box {
+            background: #fff;
+            width: 85%;
+            max-width: 340px;
+            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+        .android-alert-overlay.show .android-alert-box {
+            transform: scale(1);
+        }
+        .android-alert-icon {
+            font-size: 38px;
+            margin-bottom: 12px;
+        }
+        .android-alert-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #202124;
+            margin: 0 0 8px 0;
+        }
+        .android-alert-msg {
+            font-size: 14px;
+            color: #5f6368;
+            margin: 0 0 20px 0;
+            line-height: 1.4;
+        }
+        .android-alert-btn {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(26,115,232,0.3);
+            transition: background 0.2s;
+        }
+        .android-alert-btn:hover { background-color: #1557b0; }
 
         h2 { text-align: center; margin: 0; font-size: 1.2rem; text-transform: uppercase; }
         
@@ -546,7 +625,7 @@
             .header-info { grid-template-columns: 1fr 1fr; gap: 15px; }
             h2 { font-size: 1.5rem; }
             .modal-overlay { align-items: center; }
-            .modal-content { max-width: 440px; border-radius: 20px; transform: scale(0.9); transition: transform 0.25s ease, opacity 0.25s ease; opacity: 0; }
+            .modal-content { max-width: 440px; border-radius: 24px; transform: scale(0.9); transition: transform 0.25s ease, opacity 0.25s ease; opacity: 0; }
             .modal-overlay.show .modal-content { transform: scale(1); opacity: 1; }
             .modal-handlebar-container { display: none; }
         }
@@ -554,11 +633,21 @@
 </head>
 <body>
 
-    <!-- SPLASH SCREEN VIEW (TANPA LOGO ICON) -->
+    <!-- SPLASH SCREEN VIEW -->
     <div id="splash-screen">
         <h1 class="splash-title">Bincard Gudang</h1>
         <p class="splash-subtitle">Hybrid Offline-Online Inventory System</p>
         <div class="splash-loader"></div>
+    </div>
+
+    <!-- ANDROID MODERN CUSTOM ALERT POP-UP -->
+    <div id="androidAlertModal" class="android-alert-overlay">
+        <div class="android-alert-box">
+            <div id="alertIcon" class="android-alert-icon">⚠️</div>
+            <h3 id="alertTitle" class="android-alert-title">Perhatian</h3>
+            <p id="alertMessage" class="android-alert-msg">Pesan informasi sistem.</p>
+            <button class="android-alert-btn" onclick="tutupAndroidAlert()">OK</button>
+        </div>
     </div>
 
 <div class="container">
@@ -807,8 +896,19 @@
     let activeId = null;
     let tempCapturedImage = "";
 
+    // Fungsi Pengganti Alert Bawaan Browser ala Android Modern
+    function showAndroidAlert(title, message, icon = "✨") {
+        document.getElementById("alertTitle").innerText = title;
+        document.getElementById("alertMessage").innerText = message;
+        document.getElementById("alertIcon").innerText = icon;
+        document.getElementById("androidAlertModal").classList.add("show");
+    }
+
+    function tutupAndroidAlert() {
+        document.getElementById("androidAlertModal").classList.remove("show");
+    }
+
     window.onload = async function() {
-        // Simulasi waktu tampil splash screen 1.5 detik
         setTimeout(() => {
             let splash = document.getElementById("splash-screen");
             splash.style.opacity = "0";
@@ -977,7 +1077,10 @@
         let locBaru = document.getElementById("inputNewLoc").value.trim() || "Rak -";
         let unitBaru = document.getElementById("inputNewUnit").value.trim() || "Pcs";
 
-        if (!namaBaru) { alert("Nama material tidak boleh kosong!"); return; }
+        if (!namaBaru) { 
+            showAndroidAlert("Peringatan", "Nama material tidak boleh kosong!", "⚠️"); 
+            return; 
+        }
 
         bincards.push({
             id: Date.now(),
@@ -992,6 +1095,7 @@
         simpanStorage();
         tutupFormBaru();
         renderMaterialList();
+        showAndroidAlert("Berhasil", "Material umum baru berhasil disimpan!", "🎉");
     }
 
     function simpanJumboRollBaru() {
@@ -1000,7 +1104,10 @@
         let locInput = document.getElementById("inputJumboLoc").value.trim() || "Zona Roll -";
         let unitInput = document.getElementById("inputJumboUnit").value.trim() || "Kg";
 
-        if (!nameInput) { alert("Nama/Kode Jumbo Roll tidak boleh kosong!"); return; }
+        if (!nameInput) { 
+            showAndroidAlert("Peringatan", "Nama/Kode Jumbo Roll tidak boleh kosong!", "⚠️"); 
+            return; 
+        }
 
         let finalName = sizeInput ? `${nameInput} (${sizeInput})` : nameInput;
 
@@ -1017,6 +1124,7 @@
         simpanStorage();
         tutupFormJumbo();
         renderMaterialList();
+        showAndroidAlert("Berhasil", "Jumbo roll baru berhasil disimpan!", "🎉");
     }
 
     function bukaBincard(id) {
@@ -1073,7 +1181,10 @@
         let locEdit = document.getElementById("inputEditLoc").value.trim() || "Rak -";
         let unitEdit = document.getElementById("inputEditUnit").value.trim() || "Pcs";
 
-        if (!namaEdit) { alert("Nama material tidak boleh kosong!"); return; }
+        if (!namaEdit) { 
+            showAndroidAlert("Peringatan", "Nama material tidak boleh kosong!", "⚠️"); 
+            return; 
+        }
 
         current.name = namaEdit;
         current.loc = locEdit;
@@ -1088,6 +1199,7 @@
         } else {
             renderMaterialList();
         }
+        showAndroidAlert("Berhasil", "Perubahan material berhasil disimpan!", "✅");
     }
 
     function hapusBincardAktif() {
@@ -1096,6 +1208,7 @@
             bincards = bincards.filter(item => item.id !== activeId);
             simpanStorage();
             kembaliKeList();
+            showAndroidAlert("Terhapus", "Material berhasil dihapus dari sistem.", "🗑️");
         }
     }
 
